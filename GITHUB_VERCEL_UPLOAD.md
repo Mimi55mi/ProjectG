@@ -1,55 +1,98 @@
-# อัปโหลด MoonBrew ไป GitHub และตั้งค่า Vercel
+# นำ MoonBrew ขึ้น GitHub และ Vercel
 
-## สำคัญ: แตก ZIP ก่อน
+โปรเจกต์นี้เป็น **React + Vite SPA ที่มี Express/tRPC API** สำหรับกระดานคะแนน ไม่ใช่ static frontend อย่างเดียว
 
-GitHub จะเก็บ ZIP เป็นไฟล์แนบใน repository ไม่ได้แตกไฟล์ให้เป็น source code อัตโนมัติ ให้แตก ZIP ลงเครื่องก่อน แล้วอัปโหลด **ไฟล์และโฟลเดอร์ทั้งหมดภายใน ZIP** เข้า repository (ไม่ใช่อัปโหลด ZIP ไฟล์เดียว)
+## 1. อัปโหลดขึ้น GitHub อย่างถูกโครงสร้าง
 
-ZIP เวอร์ชันนี้วางไฟล์โปรเจกต์ไว้ที่ระดับบนสุด หลังแตกไฟล์แล้วควรเห็นรายการเหล่านี้ทันที:
+1. แตกไฟล์ ZIP ให้เห็นไฟล์เหล่านี้ที่ระดับ root ของ repository ทันที:
+
+   ```text
+   package.json
+   pnpm-lock.yaml
+   pnpm-workspace.yaml
+   vercel.json
+   server.ts
+   client/
+   server/
+   shared/
+   drizzle/
+   ```
+
+2. อัปโหลด **ไฟล์และโฟลเดอร์ทั้งหมดภายใน ZIP** เข้า repository ไม่ใช่อัปโหลด ZIP ไฟล์เดียว
+3. ตรวจว่าไฟล์สำคัญอยู่ตำแหน่งนี้:
+
+   ```text
+   client/index.html
+   client/src/main.tsx
+   server.ts
+   vercel.json
+   ```
+
+4. ห้ามอัปโหลด `.env`, API keys, credentials, `node_modules/`, `dist/` หรือ `public/` ที่เป็น build output
+
+## 2. ตั้งค่า Vercel
+
+เชื่อม GitHub repository แล้วตั้งค่า **Root Directory** เป็นโฟลเดอร์ที่มี `package.json` และ `client/` อยู่ระดับเดียวกัน (โดยปกติคือ root ของ repository)
+
+ไฟล์ `vercel.json` ในโปรเจกต์ตั้งค่าไว้แล้วดังนี้:
+
+- ติดตั้งด้วย `pnpm install --frozen-lockfile`
+- build ด้วย `pnpm build:vercel`
+- สร้าง frontend ไปที่ `public/` ซึ่ง Vercel ใช้เสิร์ฟเป็น static assets
+- ใช้ root `server.ts` เป็น Express Function สำหรับ `/api/trpc`, OAuth callback และ storage proxy
+- fallback เส้นทางของ React Router ไปที่ `index.html` โดยไม่ดัก `/api/*`
+- ปิด cache สำหรับ API เพื่อไม่ให้คะแนนเก่าค้าง
+
+ไม่ต้องตั้ง Root Directory เป็น `client/` และไม่ต้องกรอก Output Directory ทับค่าใน `vercel.json`
+
+## 3. Environment Variables บน Vercel
+
+คัดลอกชื่อจาก `.env.example` ไปสร้างใน Vercel Project Settings โดยใส่ค่าจริงเฉพาะใน Vercel เท่านั้น
+
+### ต้องมีหากต้องการบันทึกคะแนนออนไลน์
 
 ```text
-package.json
-pnpm-lock.yaml
-vite.config.ts
-client/
-server/
-shared/
-drizzle/
+DATABASE_URL
 ```
 
-## ตรวจโครงสร้างที่ GitHub
+ฐานข้อมูลต้องมีตารางตาม migration ใน `drizzle/` โดยเฉพาะ `leaderboard_entries`
 
-ในหน้าแรกของ repository ต้องเห็น `package.json`, `vite.config.ts` และโฟลเดอร์ `client/` อยู่ระดับเดียวกัน จากนั้นตรวจว่ามีไฟล์เหล่านี้:
+### ต้องมีหากเปิดใช้งาน Manus OAuth
 
 ```text
-client/index.html
-client/src/main.tsx
+JWT_SECRET
+VITE_APP_ID
+OAUTH_SERVER_URL
+VITE_OAUTH_PORTAL_URL
+OWNER_OPEN_ID
 ```
 
-ข้อผิดพลาดจาก Vercel:
+### ต้องมีเฉพาะฟีเจอร์ที่ใช้ Manus API/storage
 
 ```text
-Failed to resolve /src/main.tsx from /vercel/path0/client/index.html
+BUILT_IN_FORGE_API_URL
+BUILT_IN_FORGE_API_KEY
+VITE_FRONTEND_FORGE_API_URL
+VITE_FRONTEND_FORGE_API_KEY
 ```
 
-หมายความว่า commit/branch ที่ Vercel checkout มาไม่มี `client/src/main.tsx` ในตำแหน่งที่ Vite คาดไว้ หรือ Vercel เลือก Root Directory ไปยังโฟลเดอร์ผิด ให้ตรวจ branch/commit ล่าสุด และให้ Root Directory ชี้ไปยังโฟลเดอร์ที่มี `package.json`, `vite.config.ts` และ `client/` พร้อมกัน อย่าตั้ง Root Directory เป็น `client/` สำหรับโครงสร้าง ZIP นี้
+ถ้าไม่ได้ตั้งค่า database หน้าเกมยังเปิดได้และจะแสดงตารางว่าง แต่การบันทึกคะแนนจะไม่สำเร็จ ดังนั้นควรตั้ง `DATABASE_URL` ก่อนใช้งานจริง
 
-## ค่าพื้นฐานบน Vercel
-
-- Build command: `pnpm build`
-- Frontend output directory: `dist/public` (หากต้องกรอกเอง)
-- เลือก Root Directory ที่มี `package.json` และ `client/` อยู่ด้วยกัน
-
-คำเตือน `%VITE_ANALYTICS_ENDPOINT%` และ `%VITE_ANALYTICS_WEBSITE_ID%` เป็นคำเตือนเรื่อง analytics ที่ไม่มีค่า environment; ข้อผิดพลาดที่หยุด build ตาม log ที่ให้มาคือ Vite หา `client/src/main.tsx` ไม่พบ
-
-> โปรเจกต์นี้เป็น full-stack และอาศัย Manus auth/database/API อยู่ การที่ frontend build ผ่านไม่ได้แปลว่า backend `/api/trpc` พร้อมใช้งานบน static hosting โดยอัตโนมัติ ต้องตั้งค่าบริการและ environment ที่เกี่ยวข้องใน runtime ที่รองรับด้วย
-
-## การทดสอบในแพ็กเกจ
+## 4. คำสั่งตรวจสอบก่อน push
 
 ```bash
 pnpm install --frozen-lockfile
 pnpm check
 pnpm test
 pnpm build
+pnpm build:vercel
 ```
 
-อย่าอัปโหลด `.env`, API keys หรือ credentials ไป GitHub
+คำสั่ง `pnpm build` ใช้ตรวจ local full-stack ส่วน `pnpm build:vercel` จำลอง frontend artifact ที่ Vercel จะใช้
+
+## 5. หมายเหตุด้านความปลอดภัย
+
+- ค่า secret ใช้เฉพาะฝั่ง server และห้ามเติม `VITE_` ให้ secret ที่ไม่ควรเปิดเผย เพราะตัวแปร `VITE_*` จะถูกฝังใน browser bundle
+- `vercel.json` แยก API ออกจาก SPA fallback แล้ว ป้องกันไม่ให้ `/api/trpc` ถูกส่งไปเป็น `index.html`
+- `server.ts` ไม่เรียก `app.listen()` จึงเหมาะกับ lifecycle แบบ serverless ของ Vercel
+- ห้ามนำ `dist/`, `public/` ที่ build แล้ว หรือ `.manus-logs/` เข้า GitHub

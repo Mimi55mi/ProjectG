@@ -1,19 +1,22 @@
 {
-  "version": 2,
-  "builds": [
+  "$schema": "https://openapi.vercel.sh/vercel.json",
+  "installCommand": "pnpm install --frozen-lockfile",
+  "buildCommand": "pnpm build:vercel",
+  "rewrites": [
     {
-      "src": "server/_core/index.ts",
-      "use": "@vercel/node"
+      "source": "/:path((?!api(?:/|$)).*)",
+      "destination": "/index.html"
     }
   ],
-  "routes": [
+  "headers": [
     {
-      "src": "/api/(.*)",
-      "dest": "server/_core/index.ts"
-    },
-    {
-      "src": "/(.*)",
-      "dest": "server/_core/index.ts"
+      "source": "/api/:path*",
+      "headers": [
+        {
+          "key": "Cache-Control",
+          "value": "no-store"
+        }
+      ]
     }
   ]
 }
