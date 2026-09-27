@@ -5,7 +5,6 @@ import {
   Check,
   CircleHelp,
   Home,
-  Music4,
   Search,
   Sparkles,
   Timer,
@@ -14,17 +13,33 @@ import {
   X,
   Heart,
 } from "lucide-react";
-import { useCallback, useEffect, useMemo, useRef, useState } from "react";
-import { BrowserRouter, Link, Route, Routes, useLocation, useNavigate, useSearchParams } from "react-router-dom";
-import { trpc } from "./lib/trpc";
-import { confirmedGameRoute, normalizeLeaderboardName } from "../../shared/leaderboard";
+import { useCallback, useEffect, useMemo, useState } from "react";
+import {
+  BrowserRouter,
+  Link,
+  Route,
+  Routes,
+  useLocation,
+  useNavigate,
+  useSearchParams,
+} from "react-router-dom";
+import {
+  confirmedGameRoute,
+  normalizeLeaderboardName,
+  topTenLeaderboardEntries,
+} from "../../shared/leaderboard";
 import "./App.css";
 import "./Leaderboard.css";
 
 type Rarity = "ธรรมดา" | "ดี" | "หายาก" | "ตำนาน";
 type DifficultyKey = "easy" | "normal" | "hard";
 type BrewStatus =
-  "idle" | "preparing" | "ready" | "brewing" | "success" | "failure";
+  | "idle"
+  | "preparing"
+  | "ready"
+  | "brewing"
+  | "success"
+  | "failure";
 type Popup = { correct: boolean; points: number; message: string } | null;
 
 type Ingredient = {
@@ -78,7 +93,7 @@ const ingredients: Ingredient[] = ingredientSeed.map(
     icon,
     color,
     rarity,
-  }),
+  })
 );
 
 const recipeSeed: Array<
@@ -333,38 +348,376 @@ const recipeSeed: Array<
     ["ember-root", "honeycomb", "cinnamon-bark", "cloudberry"],
   ],
 
-  ["common-starlight-tea", "ชาดาวอุ่น", "ปลอบใจและเพิ่มสมาธิ", "ชงเบอร์รี่กับรวงผึ้งจนหอม", "ธรรมดา", 24, "🍵", "#ffd9a8", ["cloudberry", "honeycomb"]],
-  ["common-rain-drop", "หยดฝนใส", "คืนความสดชื่น", "แช่เมล็ดฝนกับแก้วทะเล", "ธรรมดา", 26, "💧", "#bcecf2", ["petal-rain", "sea-glass"]],
-  ["common-moss-cookie", "คุกกี้มอส", "ช่วยให้ใจสงบ", "อบไลท์มอสกับอบเชย", "ธรรมดา", 28, "🍪", "#b9e5b4", ["glowmoss", "cinnamon-bark"]],
-  ["common-sun-honey", "น้ำผึ้งอาทิตย์", "เพิ่มความอบอุ่น", "ละลายรวงผึ้งกับหินอาทิตย์", "ธรรมดา", 30, "🍯", "#ffe18c", ["honeycomb", "sunstone"]],
-  ["common-rose-milk", "นมกุหลาบหมอก", "ทำให้ร่างกายเบา", "คนกุหลาบกับไข่มุกความฝัน", "ธรรมดา", 32, "🥛", "#ffcfe0", ["mist-rose", "dream-pearl"]],
-  ["common-moon-salt", "เกลือจันทร์", "เสริมพลังป้องกัน", "บดกลีบจันทร์กับหนามเงิน", "ธรรมดา", 34, "🧂", "#d9ddff", ["moon-petal", "silver-thorn"]],
-  ["common-fairy-jam", "แยมภูต", "เพิ่มความคล่องตัว", "กวนเห็ดภูตกับดอกลูน่า", "ธรรมดา", 36, "🍓", "#ffb5c9", ["fairy-mushroom", "luna-bloom"]],
-  ["common-cloud-ink", "หมึกเมฆา", "ทำให้ความคิดลื่นไหล", "คั้นเบอร์รี่กับใบไวโอเล็ต", "ธรรมดา", 38, "🫐", "#c5caff", ["cloudberry", "violet-fern"]],
-  ["uncommon-fern-fizz", "โซดาเฟิร์น", "ปล่อยประกายรอบตัว", "ผสมเฟิร์นกับเมล็ดฝนและไข่มุก", "ดี", 48, "🫧", "#b9f0dc", ["starlight-fern", "petal-rain", "dream-pearl"]],
-  ["uncommon-ember-tea", "ชาเปลวอ่อน", "เติมความกล้า", "ต้มรากไฟกับอบเชยและน้ำผึ้ง", "ดี", 50, "🍵", "#ffbe91", ["ember-root", "cinnamon-bark", "honeycomb"]],
-  ["uncommon-sea-breeze", "ลมทะเลในขวด", "ทำให้ใจเย็น", "เขย่าแก้วทะเลกับดอกลูน่าและกุหลาบ", "ดี", 52, "🧴", "#a9e9e0", ["sea-glass", "luna-bloom", "mist-rose"]],
-  ["uncommon-shadow-soup", "ซุปเงานุ่ม", "ช่วยให้หลับลึก", "เคี่ยวเถาเงากับไลท์มอสและเห็ดภูต", "ดี", 54, "🍲", "#b9b8e8", ["shadow-vine", "glowmoss", "fairy-mushroom"]],
-  ["uncommon-rainbow-mist", "หมอกสายรุ้ง", "เพิ่มสีสันให้เวทมนตร์", "โปรยเมล็ดรุ้งบนไข่มุกและเฟิร์น", "หายาก", 58, "🌈", "#f5c7e6", ["rainbow-seed", "dream-pearl", "starlight-fern"]],
-  ["uncommon-crystal-bloom", "ดอกแก้วคริสตัล", "สะท้อนแสงรอบตัว", "แช่ใยคริสตัลกับดอกไม้และน้ำฝน", "หายาก", 60, "💠", "#bfeaff", ["crystal-silk", "luna-bloom", "petal-rain"]],
-  ["uncommon-silver-rose", "กุหลาบเงิน", "สร้างเกราะลมบาง ๆ", "พันหนามเงินกับกุหลาบและกลีบจันทร์", "หายาก", 62, "🌹", "#e3d9ff", ["silver-thorn", "mist-rose", "moon-petal"]],
-  ["uncommon-void-lantern", "โคมวอยด์", "ส่องทางในความมืด", "จุดเถ้าจันทร์กับหินอาทิตย์และเถาเงา", "หายาก", 64, "🏮", "#c5b8ff", ["moon-ash", "sunstone", "shadow-vine"]],
-  ["rare-sky-shield", "เกราะฟ้าคราม", "ป้องกันเวทแรง", "กวนใยคริสตัลกับเฟิร์นและหนามเงิน", "หายาก", 80, "🛡️", "#a9d7ff", ["crystal-silk", "starlight-fern", "silver-thorn", "sunstone"]],
-  ["rare-moon-garden", "สวนจันทร์ลับ", "ทำให้ฝันเป็นจริง", "เรียงกลีบจันทร์ ดอกไม้ เถาวอยด์ และไข่มุก", "หายาก", 84, "🌺", "#e4c8ff", ["moon-petal", "luna-bloom", "moon-ash", "dream-pearl"]],
-  ["rare-fire-tide", "คลื่นเพลิง", "ควบคุมไฟและน้ำพร้อมกัน", "ผสมรากไฟกับฝน แก้วทะเล และอบเชย", "หายาก", 88, "🌊", "#ffbf9e", ["ember-root", "petal-rain", "sea-glass", "cinnamon-bark"]],
-  ["rare-cloud-armor", "เกราะเมฆา", "ลอยตัวได้นานขึ้น", "กวนเบอร์รี่ ใบไวโอเล็ต เฟิร์น และใยแก้ว", "หายาก", 90, "☁️", "#c4d2ff", ["cloudberry", "violet-fern", "starlight-fern", "crystal-silk"]],
-  ["rare-rose-comet", "ดาวหางกุหลาบ", "เพิ่มความเร็วเวทมนตร์", "เร่งกุหลาบด้วยเมล็ดรุ้งและหินอาทิตย์", "หายาก", 92, "☄️", "#ffc3db", ["mist-rose", "rainbow-seed", "sunstone", "luna-bloom"]],
-  ["rare-fairy-crown", "มงกุฎภูต", "เรียกผู้ช่วยตัวจิ๋ว", "บดเห็ดกับไลท์มอส น้ำผึ้ง และดอกไม้", "หายาก", 94, "👑", "#ffd1df", ["fairy-mushroom", "glowmoss", "honeycomb", "luna-bloom"]],
-  ["rare-night-sea", "ทะเลราตรี", "มองเห็นเวทที่ซ่อนอยู่", "หมักเถาเงากับแก้วทะเล เถ้าจันทร์ และฝน", "ตำนาน", 96, "🌌", "#aaa8e9", ["shadow-vine", "sea-glass", "moon-ash", "petal-rain"]],
-  ["rare-solar-prism", "ปริซึมสุริยะ", "แยกแสงเป็นเวทหลายสาย", "เรียงหินอาทิตย์ ใยแก้ว เฟิร์น และเมล็ดรุ้ง", "ตำนาน", 98, "🔆", "#ffe69f", ["sunstone", "crystal-silk", "starlight-fern", "rainbow-seed"]],
-  ["legendary-moon-ocean", "มหาสมุทรจันทร์", "เปิดประตูสู่ความฝัน", "รวมแก้วทะเล กลีบจันทร์ ไข่มุก และเถ้าจันทร์", "ตำนาน", 150, "🌙", "#b9b5ff", ["sea-glass", "moon-petal", "dream-pearl", "moon-ash", "luna-bloom"]],
-  ["legendary-star-forge", "เตาหลอมดวงดาว", "สร้างพลังงานไร้ขีดจำกัด", "หลอมรากไฟ หินอาทิตย์ เฟิร์น ใยแก้ว และหนามเงิน", "ตำนาน", 160, "⭐", "#ffe08d", ["ember-root", "sunstone", "starlight-fern", "crystal-silk", "silver-thorn"]],
-  ["legendary-void-rose", "กุหลาบแห่งวอยด์", "ปกป้องจากคำสาปทุกชนิด", "ผสานเถาเงา กุหลาบ เมล็ดรุ้ง เถ้าจันทร์ และไข่มุก", "ตำนาน", 170, "🥀", "#bca8e9", ["shadow-vine", "mist-rose", "rainbow-seed", "moon-ash", "dream-pearl"]],
-  ["legendary-fairy-sky", "ฟ้าภูตนิรันดร์", "เรียกแสงเหนือมาคุ้มครอง", "ต้มเห็ด ไลท์มอส ดอกไม้ เบอร์รี่ และเฟิร์น", "ตำนาน", 180, "🧚", "#c6f0cf", ["fairy-mushroom", "glowmoss", "luna-bloom", "cloudberry", "starlight-fern"]],
-  ["legendary-rainbow-sea", "ทะเลสายรุ้ง", "เปลี่ยนโลกเป็นสีสัน", "ร้อยเมล็ดรุ้ง แก้วทะเล ฝน ดอกไม้ และหินอาทิตย์", "ตำนาน", 190, "🌈", "#f4bde1", ["rainbow-seed", "sea-glass", "petal-rain", "luna-bloom", "sunstone"]],
-  ["legendary-crystal-night", "ราตรีคริสตัล", "หยุดเวลาในชั่วขณะ", "ผนึกใยแก้วกับเถามืด หนามเงิน เถ้าจันทร์ และอบเชย", "ตำนาน", 200, "🔮", "#c8baff", ["crystal-silk", "shadow-vine", "silver-thorn", "moon-ash", "cinnamon-bark"]],
-  ["legendary-sun-moon", "สุริยันจันทรา", "สมดุลพลังตรงข้าม", "ผสานหินอาทิตย์กับกลีบจันทร์ รากไฟ ไข่มุก และเมล็ดรุ้ง", "ตำนาน", 210, "☯️", "#ffd49b", ["sunstone", "moon-petal", "ember-root", "dream-pearl", "rainbow-seed"]],
-  ["legendary-dream-kingdom", "อาณาจักรความฝัน", "สร้างโลกฝันชั่วนิรันดร์", "รวมวัตถุดิบแห่งฝันทั้งห้าชนิดด้วยแสงดาว", "ตำนาน", 220, "🏰", "#ddbfff", ["dream-pearl", "violet-fern", "cloudberry", "moon-ash", "starlight-fern"]],
+  [
+    "common-starlight-tea",
+    "ชาดาวอุ่น",
+    "ปลอบใจและเพิ่มสมาธิ",
+    "ชงเบอร์รี่กับรวงผึ้งจนหอม",
+    "ธรรมดา",
+    24,
+    "🍵",
+    "#ffd9a8",
+    ["cloudberry", "honeycomb"],
+  ],
+  [
+    "common-rain-drop",
+    "หยดฝนใส",
+    "คืนความสดชื่น",
+    "แช่เมล็ดฝนกับแก้วทะเล",
+    "ธรรมดา",
+    26,
+    "💧",
+    "#bcecf2",
+    ["petal-rain", "sea-glass"],
+  ],
+  [
+    "common-moss-cookie",
+    "คุกกี้มอส",
+    "ช่วยให้ใจสงบ",
+    "อบไลท์มอสกับอบเชย",
+    "ธรรมดา",
+    28,
+    "🍪",
+    "#b9e5b4",
+    ["glowmoss", "cinnamon-bark"],
+  ],
+  [
+    "common-sun-honey",
+    "น้ำผึ้งอาทิตย์",
+    "เพิ่มความอบอุ่น",
+    "ละลายรวงผึ้งกับหินอาทิตย์",
+    "ธรรมดา",
+    30,
+    "🍯",
+    "#ffe18c",
+    ["honeycomb", "sunstone"],
+  ],
+  [
+    "common-rose-milk",
+    "นมกุหลาบหมอก",
+    "ทำให้ร่างกายเบา",
+    "คนกุหลาบกับไข่มุกความฝัน",
+    "ธรรมดา",
+    32,
+    "🥛",
+    "#ffcfe0",
+    ["mist-rose", "dream-pearl"],
+  ],
+  [
+    "common-moon-salt",
+    "เกลือจันทร์",
+    "เสริมพลังป้องกัน",
+    "บดกลีบจันทร์กับหนามเงิน",
+    "ธรรมดา",
+    34,
+    "🧂",
+    "#d9ddff",
+    ["moon-petal", "silver-thorn"],
+  ],
+  [
+    "common-fairy-jam",
+    "แยมภูต",
+    "เพิ่มความคล่องตัว",
+    "กวนเห็ดภูตกับดอกลูน่า",
+    "ธรรมดา",
+    36,
+    "🍓",
+    "#ffb5c9",
+    ["fairy-mushroom", "luna-bloom"],
+  ],
+  [
+    "common-cloud-ink",
+    "หมึกเมฆา",
+    "ทำให้ความคิดลื่นไหล",
+    "คั้นเบอร์รี่กับใบไวโอเล็ต",
+    "ธรรมดา",
+    38,
+    "🫐",
+    "#c5caff",
+    ["cloudberry", "violet-fern"],
+  ],
+  [
+    "uncommon-fern-fizz",
+    "โซดาเฟิร์น",
+    "ปล่อยประกายรอบตัว",
+    "ผสมเฟิร์นกับเมล็ดฝนและไข่มุก",
+    "ดี",
+    48,
+    "🫧",
+    "#b9f0dc",
+    ["starlight-fern", "petal-rain", "dream-pearl"],
+  ],
+  [
+    "uncommon-ember-tea",
+    "ชาเปลวอ่อน",
+    "เติมความกล้า",
+    "ต้มรากไฟกับอบเชยและน้ำผึ้ง",
+    "ดี",
+    50,
+    "🍵",
+    "#ffbe91",
+    ["ember-root", "cinnamon-bark", "honeycomb"],
+  ],
+  [
+    "uncommon-sea-breeze",
+    "ลมทะเลในขวด",
+    "ทำให้ใจเย็น",
+    "เขย่าแก้วทะเลกับดอกลูน่าและกุหลาบ",
+    "ดี",
+    52,
+    "🧴",
+    "#a9e9e0",
+    ["sea-glass", "luna-bloom", "mist-rose"],
+  ],
+  [
+    "uncommon-shadow-soup",
+    "ซุปเงานุ่ม",
+    "ช่วยให้หลับลึก",
+    "เคี่ยวเถาเงากับไลท์มอสและเห็ดภูต",
+    "ดี",
+    54,
+    "🍲",
+    "#b9b8e8",
+    ["shadow-vine", "glowmoss", "fairy-mushroom"],
+  ],
+  [
+    "uncommon-rainbow-mist",
+    "หมอกสายรุ้ง",
+    "เพิ่มสีสันให้เวทมนตร์",
+    "โปรยเมล็ดรุ้งบนไข่มุกและเฟิร์น",
+    "หายาก",
+    58,
+    "🌈",
+    "#f5c7e6",
+    ["rainbow-seed", "dream-pearl", "starlight-fern"],
+  ],
+  [
+    "uncommon-crystal-bloom",
+    "ดอกแก้วคริสตัล",
+    "สะท้อนแสงรอบตัว",
+    "แช่ใยคริสตัลกับดอกไม้และน้ำฝน",
+    "หายาก",
+    60,
+    "💠",
+    "#bfeaff",
+    ["crystal-silk", "luna-bloom", "petal-rain"],
+  ],
+  [
+    "uncommon-silver-rose",
+    "กุหลาบเงิน",
+    "สร้างเกราะลมบาง ๆ",
+    "พันหนามเงินกับกุหลาบและกลีบจันทร์",
+    "หายาก",
+    62,
+    "🌹",
+    "#e3d9ff",
+    ["silver-thorn", "mist-rose", "moon-petal"],
+  ],
+  [
+    "uncommon-void-lantern",
+    "โคมวอยด์",
+    "ส่องทางในความมืด",
+    "จุดเถ้าจันทร์กับหินอาทิตย์และเถาเงา",
+    "หายาก",
+    64,
+    "🏮",
+    "#c5b8ff",
+    ["moon-ash", "sunstone", "shadow-vine"],
+  ],
+  [
+    "rare-sky-shield",
+    "เกราะฟ้าคราม",
+    "ป้องกันเวทแรง",
+    "กวนใยคริสตัลกับเฟิร์นและหนามเงิน",
+    "หายาก",
+    80,
+    "🛡️",
+    "#a9d7ff",
+    ["crystal-silk", "starlight-fern", "silver-thorn", "sunstone"],
+  ],
+  [
+    "rare-moon-garden",
+    "สวนจันทร์ลับ",
+    "ทำให้ฝันเป็นจริง",
+    "เรียงกลีบจันทร์ ดอกไม้ เถาวอยด์ และไข่มุก",
+    "หายาก",
+    84,
+    "🌺",
+    "#e4c8ff",
+    ["moon-petal", "luna-bloom", "moon-ash", "dream-pearl"],
+  ],
+  [
+    "rare-fire-tide",
+    "คลื่นเพลิง",
+    "ควบคุมไฟและน้ำพร้อมกัน",
+    "ผสมรากไฟกับฝน แก้วทะเล และอบเชย",
+    "หายาก",
+    88,
+    "🌊",
+    "#ffbf9e",
+    ["ember-root", "petal-rain", "sea-glass", "cinnamon-bark"],
+  ],
+  [
+    "rare-cloud-armor",
+    "เกราะเมฆา",
+    "ลอยตัวได้นานขึ้น",
+    "กวนเบอร์รี่ ใบไวโอเล็ต เฟิร์น และใยแก้ว",
+    "หายาก",
+    90,
+    "☁️",
+    "#c4d2ff",
+    ["cloudberry", "violet-fern", "starlight-fern", "crystal-silk"],
+  ],
+  [
+    "rare-rose-comet",
+    "ดาวหางกุหลาบ",
+    "เพิ่มความเร็วเวทมนตร์",
+    "เร่งกุหลาบด้วยเมล็ดรุ้งและหินอาทิตย์",
+    "หายาก",
+    92,
+    "☄️",
+    "#ffc3db",
+    ["mist-rose", "rainbow-seed", "sunstone", "luna-bloom"],
+  ],
+  [
+    "rare-fairy-crown",
+    "มงกุฎภูต",
+    "เรียกผู้ช่วยตัวจิ๋ว",
+    "บดเห็ดกับไลท์มอส น้ำผึ้ง และดอกไม้",
+    "หายาก",
+    94,
+    "👑",
+    "#ffd1df",
+    ["fairy-mushroom", "glowmoss", "honeycomb", "luna-bloom"],
+  ],
+  [
+    "rare-night-sea",
+    "ทะเลราตรี",
+    "มองเห็นเวทที่ซ่อนอยู่",
+    "หมักเถาเงากับแก้วทะเล เถ้าจันทร์ และฝน",
+    "ตำนาน",
+    96,
+    "🌌",
+    "#aaa8e9",
+    ["shadow-vine", "sea-glass", "moon-ash", "petal-rain"],
+  ],
+  [
+    "rare-solar-prism",
+    "ปริซึมสุริยะ",
+    "แยกแสงเป็นเวทหลายสาย",
+    "เรียงหินอาทิตย์ ใยแก้ว เฟิร์น และเมล็ดรุ้ง",
+    "ตำนาน",
+    98,
+    "🔆",
+    "#ffe69f",
+    ["sunstone", "crystal-silk", "starlight-fern", "rainbow-seed"],
+  ],
+  [
+    "legendary-moon-ocean",
+    "มหาสมุทรจันทร์",
+    "เปิดประตูสู่ความฝัน",
+    "รวมแก้วทะเล กลีบจันทร์ ไข่มุก และเถ้าจันทร์",
+    "ตำนาน",
+    150,
+    "🌙",
+    "#b9b5ff",
+    ["sea-glass", "moon-petal", "dream-pearl", "moon-ash", "luna-bloom"],
+  ],
+  [
+    "legendary-star-forge",
+    "เตาหลอมดวงดาว",
+    "สร้างพลังงานไร้ขีดจำกัด",
+    "หลอมรากไฟ หินอาทิตย์ เฟิร์น ใยแก้ว และหนามเงิน",
+    "ตำนาน",
+    160,
+    "⭐",
+    "#ffe08d",
+    [
+      "ember-root",
+      "sunstone",
+      "starlight-fern",
+      "crystal-silk",
+      "silver-thorn",
+    ],
+  ],
+  [
+    "legendary-void-rose",
+    "กุหลาบแห่งวอยด์",
+    "ปกป้องจากคำสาปทุกชนิด",
+    "ผสานเถาเงา กุหลาบ เมล็ดรุ้ง เถ้าจันทร์ และไข่มุก",
+    "ตำนาน",
+    170,
+    "🥀",
+    "#bca8e9",
+    ["shadow-vine", "mist-rose", "rainbow-seed", "moon-ash", "dream-pearl"],
+  ],
+  [
+    "legendary-fairy-sky",
+    "ฟ้าภูตนิรันดร์",
+    "เรียกแสงเหนือมาคุ้มครอง",
+    "ต้มเห็ด ไลท์มอส ดอกไม้ เบอร์รี่ และเฟิร์น",
+    "ตำนาน",
+    180,
+    "🧚",
+    "#c6f0cf",
+    [
+      "fairy-mushroom",
+      "glowmoss",
+      "luna-bloom",
+      "cloudberry",
+      "starlight-fern",
+    ],
+  ],
+  [
+    "legendary-rainbow-sea",
+    "ทะเลสายรุ้ง",
+    "เปลี่ยนโลกเป็นสีสัน",
+    "ร้อยเมล็ดรุ้ง แก้วทะเล ฝน ดอกไม้ และหินอาทิตย์",
+    "ตำนาน",
+    190,
+    "🌈",
+    "#f4bde1",
+    ["rainbow-seed", "sea-glass", "petal-rain", "luna-bloom", "sunstone"],
+  ],
+  [
+    "legendary-crystal-night",
+    "ราตรีคริสตัล",
+    "หยุดเวลาในชั่วขณะ",
+    "ผนึกใยแก้วกับเถามืด หนามเงิน เถ้าจันทร์ และอบเชย",
+    "ตำนาน",
+    200,
+    "🔮",
+    "#c8baff",
+    [
+      "crystal-silk",
+      "shadow-vine",
+      "silver-thorn",
+      "moon-ash",
+      "cinnamon-bark",
+    ],
+  ],
+  [
+    "legendary-sun-moon",
+    "สุริยันจันทรา",
+    "สมดุลพลังตรงข้าม",
+    "ผสานหินอาทิตย์กับกลีบจันทร์ รากไฟ ไข่มุก และเมล็ดรุ้ง",
+    "ตำนาน",
+    210,
+    "☯️",
+    "#ffd49b",
+    ["sunstone", "moon-petal", "ember-root", "dream-pearl", "rainbow-seed"],
+  ],
+  [
+    "legendary-dream-kingdom",
+    "อาณาจักรความฝัน",
+    "สร้างโลกฝันชั่วนิรันดร์",
+    "รวมวัตถุดิบแห่งฝันทั้งห้าชนิดด้วยแสงดาว",
+    "ตำนาน",
+    220,
+    "🏰",
+    "#ddbfff",
+    ["dream-pearl", "violet-fern", "cloudberry", "moon-ash", "starlight-fern"],
+  ],
 ];
 const recipes: Recipe[] = recipeSeed.map(
   ([id, name, effect, method, rarity, xp, icon, color, ingredientIds]) => ({
@@ -377,7 +730,7 @@ const recipes: Recipe[] = recipeSeed.map(
     icon,
     color,
     ingredients: ingredientIds,
-  }),
+  })
 );
 const difficulty = {
   easy: {
@@ -408,10 +761,9 @@ const navItems = [
   { label: "Ranking", to: "/ranking", icon: Trophy },
   { label: "วิธีการเล่น", to: "/how-to-play", icon: CircleHelp },
 ];
-const ingredientById = (id: string) =>
-  ingredients.find((item) => item.id === id);
+const ingredientById = (id: string) => ingredients.find(item => item.id === id);
 const recipePool = (key: DifficultyKey) =>
-  recipes.filter((recipe) => {
+  recipes.filter(recipe => {
     const rarity = tierName(recipe.ingredients.length);
     return key === "easy"
       ? rarity === "COMMON" || rarity === "UNCOMMON"
@@ -420,60 +772,23 @@ const recipePool = (key: DifficultyKey) =>
         : rarity === "RARE" || rarity === "LEGENDARY";
   });
 const pickRecipe = (key: DifficultyKey, seed: number, excludeId?: string) => {
-  const pool = recipePool(key).filter((recipe) => recipe.id !== excludeId);
+  const pool = recipePool(key).filter(recipe => recipe.id !== excludeId);
   return (
     pool[(Math.floor(Math.random() * pool.length) + seed) % pool.length] ??
     recipes[0]
   );
 };
 const tierName = (count: number) =>
-  count <= 2 ? "COMMON" : count === 3 ? "UNCOMMON" : count === 4 ? "RARE" : "LEGENDARY";
+  count <= 2
+    ? "COMMON"
+    : count === 3
+      ? "UNCOMMON"
+      : count === 4
+        ? "RARE"
+        : "LEGENDARY";
 
 function AppShell() {
   const location = useLocation();
-  const [music, setMusic] = useState(false);
-  const audioRef = useRef<HTMLAudioElement | null>(null);
-  const startMusic = useCallback(() => {
-    if (audioRef.current) return;
-    const audio = new Audio("/manus-storage/moonbrew-ambient_4750f0d8.mp3");
-    audio.autoplay = true;
-    audio.preload = "auto";
-    audio.loop = true;
-    audio.volume = 0.28;
-    audioRef.current = audio;
-    void audio.play().then(() => setMusic(true)).catch(() => {
-      audioRef.current = null;
-      setMusic(false);
-    });
-  }, []);
-  const toggleMusic = () => {
-    if (audioRef.current) {
-      audioRef.current.pause();
-      audioRef.current.currentTime = 0;
-      audioRef.current = null;
-      setMusic(false);
-      return;
-    }
-    startMusic();
-  };
-  useEffect(() => {
-    startMusic();
-    const resumeOnFirstInteraction = () => {
-      startMusic();
-      window.removeEventListener("pointerdown", resumeOnFirstInteraction);
-      window.removeEventListener("keydown", resumeOnFirstInteraction);
-    };
-    window.addEventListener("pointerdown", resumeOnFirstInteraction, { once: true });
-    window.addEventListener("keydown", resumeOnFirstInteraction, { once: true });
-    return () => {
-      window.removeEventListener("pointerdown", resumeOnFirstInteraction);
-      window.removeEventListener("keydown", resumeOnFirstInteraction);
-      if (audioRef.current) {
-      audioRef.current.pause();
-      audioRef.current.currentTime = 0;
-    }
-    };
-  }, [startMusic]);
   return (
     <div className="moonbrew-shell">
       <div className="stars-layer" />
@@ -488,10 +803,10 @@ function AppShell() {
             <div className="brand-title">ห้องปรุงยาจันทรา</div>
           </div>
         </Link>
-        <button className={`music-toggle ${music ? "is-playing" : ""}`} onClick={toggleMusic}>
-          <Music4 />
-          {music ? "ปิดเพลง" : "เปิดเพลง"}
-        </button>
+        <Link to="/recipes" className="guide-toggle">
+          <BookOpen />
+          สารานุกรมวัตถุดิบ
+        </Link>
       </header>
       <div className="app-layout">
         <aside className="sidebar">
@@ -616,7 +931,11 @@ function HomeView() {
       </section>
       <section className="stat-grid">
         <StatCard icon="🧙‍♀️" label="นักปรุงยา" value="อัสเทอร์ เวล" />
-        <StatCard icon="🏆" label="ด่านสูงสุด" value="ง่าย 6 · ปกติ 5 · ยาก 4" />
+        <StatCard
+          icon="🏆"
+          label="ด่านสูงสุด"
+          value="ง่าย 6 · ปกติ 5 · ยาก 4"
+        />
         <StatCard
           icon="📖"
           label="สูตรที่ค้นพบ"
@@ -629,7 +948,7 @@ function HomeView() {
 }
 function RankingView() {
   const navigate = useNavigate();
-  const leaderboard = trpc.leaderboard.top.useQuery();
+  const localBoards = useMemo(() => loadLocalLeaderboard(), []);
   return (
     <div className="page-stack ranking-page">
       <section className="ranking-page-header section-heading">
@@ -648,20 +967,20 @@ function RankingView() {
           ปิดตาราง
         </button>
       </section>
-      <LeaderboardSection
-        boards={leaderboard.data}
-        loading={leaderboard.isLoading}
-        error={leaderboard.isError}
-      />
+      <LeaderboardSection boards={localBoards} loading={false} error={false} />
     </div>
   );
 }
 function DifficultySelectView() {
-  const leaderboard = trpc.leaderboard.top.useQuery();
+  const localBoards = useMemo(() => loadLocalLeaderboard(), []);
   const navigate = useNavigate();
-  const [selectedLevel, setSelectedLevel] = useState<DifficultyKey | null>(null);
+  const [selectedLevel, setSelectedLevel] = useState<DifficultyKey | null>(
+    null
+  );
   const [playerName, setPlayerName] = useState(() =>
-    typeof window === "undefined" ? "" : window.localStorage.getItem("moonbrew-player-name") ?? "",
+    typeof window === "undefined"
+      ? ""
+      : (window.localStorage.getItem("moonbrew-player-name") ?? "")
   );
   const confirmDifficulty = () => {
     if (selectedLevel === null) return;
@@ -683,26 +1002,32 @@ function DifficultySelectView() {
   return (
     <div className="page-stack difficulty-select-page">
       <section className="difficulty-select-hero">
-        <div className="eyebrow"><Sparkles /> BEGIN YOUR BREW</div>
+        <div className="eyebrow">
+          <Sparkles /> BEGIN YOUR BREW
+        </div>
         <h1>เลือกระดับความยาก</h1>
         <p>เลือกความท้าทายที่เหมาะกับคุณ แล้วเข้าสู่ห้องปรุงยา</p>
       </section>
       <section className="difficulty-select-grid">
-        {(Object.keys(difficulty) as DifficultyKey[]).map((key) => (
+        {(Object.keys(difficulty) as DifficultyKey[]).map(key => (
           <button
             key={key}
             type="button"
             onClick={() => setSelectedLevel(key)}
             className={`difficulty-select-card select-${key}`}
           >
-            <span className="difficulty-icon">{key === "easy" ? "🌱" : key === "normal" ? "⚗️" : "🔥"}</span>
+            <span className="difficulty-icon">
+              {key === "easy" ? "🌱" : key === "normal" ? "⚗️" : "🔥"}
+            </span>
             <div>
               <b>{difficulty[key].label}</b>
               <small>
                 <span className={`difficulty-hearts hearts-${key}`}>
-                  {Array.from({ length: difficulty[key].lives }).map((_, index) => (
-                    <Heart key={index} fill="currentColor" />
-                  ))}
+                  {Array.from({ length: difficulty[key].lives }).map(
+                    (_, index) => (
+                      <Heart key={index} fill="currentColor" />
+                    )
+                  )}
                 </span>
                 · {difficulty[key].maxStages} ด่าน · {difficulty[key].desc}
               </small>
@@ -711,15 +1036,11 @@ function DifficultySelectView() {
           </button>
         ))}
       </section>
-      <LeaderboardSection
-        boards={leaderboard.data}
-        loading={leaderboard.isLoading}
-        error={leaderboard.isError}
-      />
+      <LeaderboardSection boards={localBoards} loading={false} error={false} />
       {selectedLevel !== null && (
         <div
           className="name-entry-backdrop"
-          onMouseDown={(event) => {
+          onMouseDown={event => {
             if (event.target === event.currentTarget) setSelectedLevel(null);
           }}
         >
@@ -739,11 +1060,16 @@ function DifficultySelectView() {
             >
               <X />
             </button>
-            <div className="eyebrow"><Sparkles /> PLAYER RANKING</div>
+            <div className="eyebrow">
+              <Sparkles /> PLAYER RANKING
+            </div>
             <h2 id="difficulty-name-title">กรอกชื่อก่อนเริ่มเล่น</h2>
-            <p>ระดับ {difficulty[selectedLevel].label} · ชื่อนี้จะแสดงในกระดานสถิติ</p>
+            <p>
+              ระดับ {difficulty[selectedLevel].label} ·
+              ชื่อนี้จะแสดงในกระดานสถิติ
+            </p>
             <form
-              onSubmit={(event) => {
+              onSubmit={event => {
                 event.preventDefault();
                 confirmDifficulty();
               }}
@@ -753,7 +1079,7 @@ function DifficultySelectView() {
                 <input
                   id="difficulty-player-name"
                   value={playerName}
-                  onChange={(event) => setPlayerName(event.target.value)}
+                  onChange={event => setPlayerName(event.target.value)}
                   maxLength={24}
                   autoComplete="nickname"
                   autoFocus
@@ -762,10 +1088,18 @@ function DifficultySelectView() {
                 <small>ใช้ชื่อเดียวกันตอนบันทึกคะแนนหลังจบเกม</small>
               </div>
               <div className="name-entry-actions">
-                <button type="button" className="secondary-btn" onClick={() => setSelectedLevel(null)}>
+                <button
+                  type="button"
+                  className="secondary-btn"
+                  onClick={() => setSelectedLevel(null)}
+                >
                   ยกเลิก
                 </button>
-                <button type="submit" className="primary-btn" disabled={!normalizeLeaderboardName(playerName)}>
+                <button
+                  type="submit"
+                  className="primary-btn"
+                  disabled={!normalizeLeaderboardName(playerName)}
+                >
                   ยืนยัน
                 </button>
               </div>
@@ -803,8 +1137,65 @@ type LeaderboardRow = {
   score: number;
   stages: number;
   correctCount: number;
+  createdAt: Date | string;
 };
 type LeaderboardData = Record<DifficultyKey, LeaderboardRow[]>;
+
+const LOCAL_LEADERBOARD_KEY = "moonbrew-leaderboard-fallback";
+const leaderboardKeys: DifficultyKey[] = ["easy", "normal", "hard"];
+
+function emptyLeaderboardData(): LeaderboardData {
+  return { easy: [], normal: [], hard: [] };
+}
+
+function loadLocalLeaderboard(): LeaderboardData {
+  if (typeof window === "undefined") return emptyLeaderboardData();
+
+  try {
+    const parsed: unknown = JSON.parse(
+      window.localStorage.getItem(LOCAL_LEADERBOARD_KEY) ?? "null"
+    );
+    if (!parsed || typeof parsed !== "object") return emptyLeaderboardData();
+
+    return leaderboardKeys.reduce<LeaderboardData>((boards, key) => {
+      const records = (parsed as Record<string, unknown>)[key];
+      boards[key] = Array.isArray(records)
+        ? records.filter((record): record is LeaderboardRow => {
+            if (!record || typeof record !== "object") return false;
+            const item = record as Record<string, unknown>;
+            return (
+              typeof item.id === "number" &&
+              typeof item.playerName === "string" &&
+              typeof item.score === "number" &&
+              typeof item.stages === "number" &&
+              typeof item.correctCount === "number" &&
+              typeof item.createdAt === "string"
+            );
+          })
+        : [];
+      boards[key] = topTenLeaderboardEntries(boards[key]);
+      return boards;
+    }, emptyLeaderboardData());
+  } catch {
+    return emptyLeaderboardData();
+  }
+}
+
+type LocalLeaderboardEntry = Omit<LeaderboardRow, "id" | "createdAt"> & {
+  difficulty: DifficultyKey;
+};
+
+function saveLocalLeaderboardEntry(entry: LocalLeaderboardEntry) {
+  if (typeof window === "undefined") return;
+
+  const boards = loadLocalLeaderboard();
+  const { difficulty, ...record } = entry;
+  boards[difficulty] = topTenLeaderboardEntries([
+    ...boards[difficulty],
+    { ...record, id: -Date.now(), createdAt: new Date().toISOString() },
+  ]);
+  window.localStorage.setItem(LOCAL_LEADERBOARD_KEY, JSON.stringify(boards));
+}
 
 function LeaderboardSection({
   boards,
@@ -823,13 +1214,16 @@ function LeaderboardSection({
           <div className="eyebrow">MOONBREW HALL OF FAME</div>
           <h2>10 อันดับคะแนนสูงสุด</h2>
         </div>
-        <span className="soft-badge">ตารางรวมออนไลน์</span>
+        <span className="soft-badge">บันทึกในเครื่องนี้</span>
       </div>
       <div className="leaderboard-grid">
-        {keys.map((key) => {
+        {keys.map(key => {
           const records = boards?.[key] ?? [];
           return (
-            <article key={key} className={`leaderboard-level-card leaderboard-${key}`}>
+            <article
+              key={key}
+              className={`leaderboard-level-card leaderboard-${key}`}
+            >
               <header className="leaderboard-level-heading">
                 <span className="leaderboard-level-icon">
                   {key === "easy" ? "🌱" : key === "normal" ? "⚗️" : "🔥"}
@@ -850,20 +1244,45 @@ function LeaderboardSection({
                   </thead>
                   <tbody>
                     {loading ? (
-                      <tr><td colSpan={3} className="leaderboard-empty">กำลังโหลดคะแนน...</td></tr>
+                      <tr>
+                        <td colSpan={3} className="leaderboard-empty">
+                          กำลังโหลดคะแนน...
+                        </td>
+                      </tr>
                     ) : error ? (
-                      <tr><td colSpan={3} className="leaderboard-empty">โหลดตารางคะแนนไม่สำเร็จ</td></tr>
+                      <tr>
+                        <td colSpan={3} className="leaderboard-empty">
+                          โหลดตารางคะแนนไม่สำเร็จ
+                        </td>
+                      </tr>
                     ) : records.length === 0 ? (
-                      <tr><td colSpan={3} className="leaderboard-empty">ยังไม่มีสถิติ เป็นคนแรกได้เลย!</td></tr>
+                      <tr>
+                        <td colSpan={3} className="leaderboard-empty">
+                          ยังไม่มีสถิติ เป็นคนแรกได้เลย!
+                        </td>
+                      </tr>
                     ) : (
                       records.slice(0, 10).map((record, index) => (
                         <tr key={record.id}>
-                          <td><span className={`leaderboard-rank rank-${index + 1}`}>{index < 3 ? ["🥇", "🥈", "🥉"][index] : index + 1}</span></td>
+                          <td>
+                            <span
+                              className={`leaderboard-rank rank-${index + 1}`}
+                            >
+                              {index < 3
+                                ? ["🥇", "🥈", "🥉"][index]
+                                : index + 1}
+                            </span>
+                          </td>
                           <td className="leaderboard-player">
                             <b>{record.playerName}</b>
-                            <small>ผ่าน {record.stages} ด่าน · ปรุงถูก {record.correctCount}</small>
+                            <small>
+                              ผ่าน {record.stages} ด่าน · ปรุงถูก{" "}
+                              {record.correctCount}
+                            </small>
                           </td>
-                          <td className="leaderboard-score">{record.score.toLocaleString("th-TH")}</td>
+                          <td className="leaderboard-score">
+                            {record.score.toLocaleString("th-TH")}
+                          </td>
                         </tr>
                       ))
                     )}
@@ -882,7 +1301,9 @@ function BrewView() {
   const [searchParams] = useSearchParams();
   const requestedLevel = searchParams.get("level");
   const initialLevel: DifficultyKey =
-    requestedLevel === "easy" || requestedLevel === "hard" ? requestedLevel : "normal";
+    requestedLevel === "easy" || requestedLevel === "hard"
+      ? requestedLevel
+      : "normal";
   const [level] = useState<DifficultyKey>(initialLevel);
   const [status, setStatus] = useState<BrewStatus>("idle");
   const [lives, setLives] = useState<number>(difficulty.normal.lives);
@@ -895,14 +1316,12 @@ function BrewView() {
   const [score, setScore] = useState<number>(0);
   const [correctCount, setCorrectCount] = useState<number>(0);
   const [playerName, setPlayerName] = useState(() =>
-    typeof window === "undefined" ? "" : window.localStorage.getItem("moonbrew-player-name") ?? "",
+    typeof window === "undefined"
+      ? ""
+      : (window.localStorage.getItem("moonbrew-player-name") ?? "")
   );
-  const trpcUtils = trpc.useUtils();
-  const leaderboardSubmit = trpc.leaderboard.submit.useMutation({
-    onSuccess: () => {
-      void trpcUtils.leaderboard.top.invalidate();
-    },
-  });
+  const [scoreSaved, setScoreSaved] = useState(false);
+  const [scoreSaveError, setScoreSaveError] = useState(false);
   const [popup, setPopup] = useState<Popup>(null);
   const [showStats, setShowStats] = useState(false);
   const [showCongrats, setShowCongrats] = useState(false);
@@ -912,10 +1331,10 @@ function BrewView() {
   const timeLimit = Math.max(7, config.baseTime - (stage - 1) * 2);
   const filtered = useMemo(
     () =>
-      ingredients.filter((item) =>
-        `${item.name}${item.element}`.includes(search),
+      ingredients.filter(item =>
+        `${item.name}${item.element}`.includes(search)
       ),
-    [search],
+    [search]
   );
   const finishRound = useCallback(
     (correct: boolean, reason: string) => {
@@ -924,9 +1343,9 @@ function BrewView() {
           ? selected.reduce(
               (sum, id, index) =>
                 sum + (id === recipe.ingredients[index] ? 1 : 0),
-              0,
+              0
             ) / recipe.ingredients.length
-          : 0) * 100,
+          : 0) * 100
       );
       const speedScore = correct
         ? Math.max(0, Math.round((timeLeft / timeLimit) * 100))
@@ -937,8 +1356,8 @@ function BrewView() {
       setStatus(correct ? "success" : "failure");
       setProgress(100);
       setMixing(false);
-      setScore((old) => old + points);
-      if (correct) setCorrectCount((old) => old + 1);
+      setScore(old => old + points);
+      if (correct) setCorrectCount(old => old + 1);
       setPopup({ correct, points, message: reason });
       window.setTimeout(() => {
         setPopup(null);
@@ -958,7 +1377,7 @@ function BrewView() {
           setStatus("idle");
           return;
         }
-        setStage((old) => old + 1);
+        setStage(old => old + 1);
         setRecipe(pickRecipe(level, stage + 1, recipe.id));
         setSelected([]);
         setPrepLeft(5);
@@ -978,29 +1397,29 @@ function BrewView() {
       stage,
       timeLeft,
       timeLimit,
-    ],
+    ]
   );
   useEffect(() => {
     if (status === "preparing") {
       const timer = window.setInterval(
         () =>
-          setPrepLeft((current) => {
-              if (current <= 1) {
-                window.clearInterval(timer);
-                setStatus("ready");
-                setTimeLeft(timeLimit);
-                return 0;
+          setPrepLeft(current => {
+            if (current <= 1) {
+              window.clearInterval(timer);
+              setStatus("ready");
+              setTimeLeft(timeLimit);
+              return 0;
             }
             return current - 1;
           }),
-        1000,
+        1000
       );
       return () => window.clearInterval(timer);
     }
     if (status !== "ready" && status !== "brewing") return;
     const timer = window.setInterval(() => {
       if (mixing) return;
-      setTimeLeft((current) => {
+      setTimeLeft(current => {
         if (current <= 1) {
           window.clearInterval(timer);
           finishRound(false, "หมดเวลา! สูตรถัดไปกำลังมา");
@@ -1008,28 +1427,36 @@ function BrewView() {
         }
         return current - 1;
       });
-      setProgress((current) => Math.min(96, current + 100 / (timeLimit || 1)));
+      setProgress(current => Math.min(96, current + 100 / (timeLimit || 1)));
     }, 1000);
     return () => window.clearInterval(timer);
   }, [finishRound, mixing, status, timeLimit]);
   const saveLeaderboardScore = () => {
     const normalizedName = normalizeLeaderboardName(playerName);
-    if (!normalizedName || leaderboardSubmit.isPending || leaderboardSubmit.isSuccess) return;
+    if (!normalizedName || scoreSaved) return;
     window.localStorage.setItem("moonbrew-player-name", normalizedName);
-    leaderboardSubmit.mutate({
-      difficulty: level,
-      playerName: normalizedName,
-      score,
-      stages: stage >= config.maxStages ? config.maxStages : Math.max(0, stage - 1),
-      correctCount,
-    });
+    try {
+      saveLocalLeaderboardEntry({
+        difficulty: level,
+        playerName: normalizedName,
+        score,
+        stages:
+          stage >= config.maxStages ? config.maxStages : Math.max(0, stage - 1),
+        correctCount,
+      });
+      setScoreSaved(true);
+      setScoreSaveError(false);
+    } catch {
+      setScoreSaveError(true);
+    }
   };
   const startGame = () => {
     const normalizedName = normalizeLeaderboardName(playerName);
     if (!normalizedName) return;
     setPlayerName(normalizedName);
     window.localStorage.setItem("moonbrew-player-name", normalizedName);
-    leaderboardSubmit.reset();
+    setScoreSaved(false);
+    setScoreSaveError(false);
     setStage(1);
     setLives(config.lives);
     setScore(0);
@@ -1046,8 +1473,8 @@ function BrewView() {
   };
   const addIngredient = (id: string) => {
     if (status !== "ready") return;
-    setSelected((old) =>
-      old.includes(id) ? old.filter((item) => item !== id) : [...old, id],
+    setSelected(old =>
+      old.includes(id) ? old.filter(item => item !== id) : [...old, id]
     );
     setMixing(true);
     window.setTimeout(() => setMixing(false), 500);
@@ -1059,12 +1486,13 @@ function BrewView() {
       setTimeLeft(timeLimit);
       setProgress(0);
       window.setTimeout(() => {
-        const exactOrder = selected.length === recipe.ingredients.length && selected.every(
-          (id, index) => id === recipe.ingredients[index],
-        );
+        const exactOrder =
+          selected.length === recipe.ingredients.length &&
+          selected.every((id, index) => id === recipe.ingredients[index]);
         const ingredientSetIsCorrect =
           selected.length === recipe.ingredients.length &&
-          [...selected].sort().join("|") === [...recipe.ingredients].sort().join("|");
+          [...selected].sort().join("|") ===
+            [...recipe.ingredients].sort().join("|");
         const accepted = exactOrder || ingredientSetIsCorrect;
         finishRound(
           accepted,
@@ -1072,20 +1500,24 @@ function BrewView() {
             ? "ลำดับถูกต้อง! ยาส่องประกายสวยมาก"
             : ingredientSetIsCorrect
               ? "วัตถุดิบถูกต้อง แต่ลำดับยังไม่ตรง ได้คะแนนลดลง"
-              : "วัตถุดิบหรือลำดับไม่ตรง สูตรจึงเสียพลัง",
+              : "วัตถุดิบหรือลำดับไม่ตรง สูตรจึงเสียพลัง"
         );
       }, 2000);
     }
   };
   return (
     <div className="page-stack">
-      <section className={`brew-start-only${status === "idle" && !showStats ? " has-player-summary" : ""}`}>
+      <section
+        className={`brew-start-only${status === "idle" && !showStats ? " has-player-summary" : ""}`}
+      >
         {status === "idle" && !showStats && (
           <div className="start-player-summary">
             <small>ผู้เล่นสำหรับกระดานสถิติ</small>
             <b>{playerName || "ยังไม่ได้ยืนยันชื่อ"}</b>
             {!normalizeLeaderboardName(playerName) && (
-              <Link to="/start" className="text-link">กลับไปเลือกความยากและยืนยันชื่อ</Link>
+              <Link to="/start" className="text-link">
+                กลับไปเลือกความยากและยืนยันชื่อ
+              </Link>
             )}
           </div>
         )}
@@ -1120,7 +1552,7 @@ function BrewView() {
               <Search />
               <input
                 value={search}
-                onChange={(e) => setSearch(e.target.value)}
+                onChange={e => setSearch(e.target.value)}
                 placeholder="ค้นหาวัตถุดิบ..."
               />
             </div>
@@ -1142,7 +1574,7 @@ function BrewView() {
             ))}
           </div>
           <div className="ingredient-list">
-            {filtered.map((item) => (
+            {filtered.map(item => (
               <button
                 key={item.id}
                 className={
@@ -1321,7 +1753,10 @@ function BrewView() {
             </div>
             <div className="final-grid">
               <div>
-                <b>{stage >= config.maxStages ? config.maxStages : stage - 1}/{config.maxStages}</b>
+                <b>
+                  {stage >= config.maxStages ? config.maxStages : stage - 1}/
+                  {config.maxStages}
+                </b>
                 <small>ด่านที่ผ่าน</small>
               </div>
               <div>
@@ -1342,19 +1777,21 @@ function BrewView() {
               <button
                 className="primary-btn score-save-button"
                 onClick={saveLeaderboardScore}
-                disabled={!playerName.trim() || leaderboardSubmit.isPending || leaderboardSubmit.isSuccess}
+                disabled={!playerName.trim() || scoreSaved}
               >
-                {leaderboardSubmit.isPending
-                  ? "กำลังบันทึกคะแนน..."
-                  : leaderboardSubmit.isSuccess
-                    ? "บันทึกคะแนนแล้ว"
-                    : "บันทึกคะแนนเข้าตารางรวม"}
+                {scoreSaved ? "บันทึกคะแนนแล้ว" : "บันทึกคะแนนไว้ในเครื่อง"}
               </button>
-              {leaderboardSubmit.isSuccess && (
-                <p className="score-save-message" role="status">บันทึกแล้ว คะแนนนี้จะแสดงในตารางของระดับ {config.label}</p>
+              {scoreSaved && (
+                <p className="score-save-message" role="status">
+                  บันทึกแล้ว คะแนนนี้จะแสดงในตารางของระดับ {config.label}{" "}
+                  บนเครื่องนี้
+                </p>
               )}
-              {leaderboardSubmit.isError && (
-                <p className="score-save-error" role="alert">บันทึกไม่สำเร็จ กรุณาตรวจสอบการเชื่อมต่อแล้วลองอีกครั้ง</p>
+              {scoreSaveError && (
+                <p className="score-save-error" role="alert">
+                  บันทึกไม่สำเร็จ กรุณาเปิดใช้งานพื้นที่จัดเก็บของ browser
+                  แล้วลองใหม่
+                </p>
               )}
               <button className="prepare-btn" onClick={startGame}>
                 เล่นใหม่อีกครั้ง
@@ -1375,19 +1812,67 @@ function HowToPlayView() {
     <div className="page-stack howto-page">
       <section className="recipe-header howto-hero">
         <div>
-          <div className="eyebrow"><CircleHelp /> MOONBREW GUIDE</div>
+          <div className="eyebrow">
+            <CircleHelp /> MOONBREW GUIDE
+          </div>
           <h1>วิธีการเล่น</h1>
-          <p className="howto-description">เรียนรู้ขั้นตอนปรุงยาและทำคะแนนให้สูงที่สุด</p>
+          <p className="howto-description">
+            เรียนรู้ขั้นตอนปรุงยาและทำคะแนนให้สูงที่สุด
+          </p>
         </div>
-        <Link to="/start" className="prepare-btn">เริ่มปรุงยา <ArrowRight /></Link>
+        <Link to="/start" className="prepare-btn">
+          เริ่มปรุงยา <ArrowRight />
+        </Link>
       </section>
       <section className="howto-grid">
-        <article className="howto-card"><span className="howto-icon">🎚️</span><h2>1. เลือกระดับ</h2><p>ง่ายมี 6 ด่าน ปกติมี 5 ด่าน และยากมี 4 ด่าน แต่ละระดับมีพลังชีวิตต่างกัน</p></article>
-        <article className="howto-card"><span className="howto-icon">⏳</span><h2>2. เตรียมตัว 5 วินาที</h2><p>เมื่อกดเริ่ม จะมีเวลานับถอยหลัง 5 วินาที จากนั้นจึงเริ่มเลือกวัตถุดิบได้</p></article>
-        <article className="howto-card"><span className="howto-icon">🧪</span><h2>3. เลือกวัตถุดิบ</h2><p>เลือกวัตถุดิบตามสูตร กดซ้ำที่วัตถุดิบเดิมเพื่อยกเลิกได้ และเลือกชนิดเดิมได้เพียงครั้งเดียว</p></article>
-        <article className="howto-card"><span className="howto-icon">🫧</span><h2>4. กดปรุงยา</h2><p>กดปุ่มปรุงยาใต้หม้อเพื่อเริ่มแอนิเมชันผสมยา ใช้วัตถุดิบเท่าที่เลือกได้โดยไม่จำเป็นต้องครบจึงจะกดปรุง</p></article>
-        <article className="howto-card"><span className="howto-icon">⭐</span><h2>5. ทำคะแนน</h2><p>วัตถุดิบถูกและลำดับถูกได้คะแนนสูงสุด หากวัตถุดิบถูกแต่ลำดับผิดยังเล่นต่อได้และไม่เสียหัวใจ แต่คะแนนจะลดลง</p></article>
-        <article className="howto-card"><span className="howto-icon">💗</span><h2>6. ผ่านด่าน</h2><p>สูตรของแต่ละระดับจะสุ่มจาก Common–Uncommon, Uncommon–Rare หรือ Rare–Legendary และพยายามไม่ซ้ำด่านก่อนหน้า</p></article>
+        <article className="howto-card">
+          <span className="howto-icon">🎚️</span>
+          <h2>1. เลือกระดับ</h2>
+          <p>
+            ง่ายมี 6 ด่าน ปกติมี 5 ด่าน และยากมี 4 ด่าน
+            แต่ละระดับมีพลังชีวิตต่างกัน
+          </p>
+        </article>
+        <article className="howto-card">
+          <span className="howto-icon">⏳</span>
+          <h2>2. เตรียมตัว 5 วินาที</h2>
+          <p>
+            เมื่อกดเริ่ม จะมีเวลานับถอยหลัง 5 วินาที
+            จากนั้นจึงเริ่มเลือกวัตถุดิบได้
+          </p>
+        </article>
+        <article className="howto-card">
+          <span className="howto-icon">🧪</span>
+          <h2>3. เลือกวัตถุดิบ</h2>
+          <p>
+            เลือกวัตถุดิบตามสูตร กดซ้ำที่วัตถุดิบเดิมเพื่อยกเลิกได้
+            และเลือกชนิดเดิมได้เพียงครั้งเดียว
+          </p>
+        </article>
+        <article className="howto-card">
+          <span className="howto-icon">🫧</span>
+          <h2>4. กดปรุงยา</h2>
+          <p>
+            กดปุ่มปรุงยาใต้หม้อเพื่อเริ่มแอนิเมชันผสมยา
+            ใช้วัตถุดิบเท่าที่เลือกได้โดยไม่จำเป็นต้องครบจึงจะกดปรุง
+          </p>
+        </article>
+        <article className="howto-card">
+          <span className="howto-icon">⭐</span>
+          <h2>5. ทำคะแนน</h2>
+          <p>
+            วัตถุดิบถูกและลำดับถูกได้คะแนนสูงสุด
+            หากวัตถุดิบถูกแต่ลำดับผิดยังเล่นต่อได้และไม่เสียหัวใจ แต่คะแนนจะลดลง
+          </p>
+        </article>
+        <article className="howto-card">
+          <span className="howto-icon">💗</span>
+          <h2>6. ผ่านด่าน</h2>
+          <p>
+            สูตรของแต่ละระดับจะสุ่มจาก Common–Uncommon, Uncommon–Rare หรือ
+            Rare–Legendary และพยายามไม่ซ้ำด่านก่อนหน้า
+          </p>
+        </article>
       </section>
     </div>
   );
@@ -1395,18 +1880,25 @@ function HowToPlayView() {
 
 function RecipesView() {
   const [search, setSearch] = useState("");
-  const recipeFilters = ["ALL", "COMMON", "UNCOMMON", "RARE", "LEGENDARY"] as const;
+  const recipeFilters = [
+    "ALL",
+    "COMMON",
+    "UNCOMMON",
+    "RARE",
+    "LEGENDARY",
+  ] as const;
   const [rarityFilter, setRarityFilter] =
     useState<(typeof recipeFilters)[number]>("ALL");
   const filtered = recipes
-    .filter((recipe) =>
-      `${recipe.name}${recipe.effect}${recipe.ingredients.map((id) => ingredientById(id)?.name).join("")}`.includes(
-        search,
-      ),
+    .filter(recipe =>
+      `${recipe.name}${recipe.effect}${recipe.ingredients.map(id => ingredientById(id)?.name).join("")}`.includes(
+        search
+      )
     )
     .filter(
-      (recipe) =>
-        rarityFilter === "ALL" || tierName(recipe.ingredients.length) === rarityFilter,
+      recipe =>
+        rarityFilter === "ALL" ||
+        tierName(recipe.ingredients.length) === rarityFilter
     )
     .sort((a, b) => a.ingredients.length - b.ingredients.length);
   return (
@@ -1425,13 +1917,13 @@ function RecipesView() {
           <Search />
           <input
             value={search}
-            onChange={(e) => setSearch(e.target.value)}
+            onChange={e => setSearch(e.target.value)}
             placeholder="ค้นหาชื่อยา หรือวัตถุดิบ..."
           />
         </div>
       </section>
       <div className="recipe-filters" aria-label="กรองตามความหายาก">
-        {recipeFilters.map((filter) => (
+        {recipeFilters.map(filter => (
           <button
             key={filter}
             className={rarityFilter === filter ? "active" : ""}
