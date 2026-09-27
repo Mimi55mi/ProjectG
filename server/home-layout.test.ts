@@ -25,9 +25,9 @@ describe("Home and Ranking layout", () => {
     expect(homeView).not.toContain("trpc.leaderboard.top.useQuery()");
   });
 
-  it("places Ranking after recipes in the navigation", () => {
+  it("places จัดอันดับ after recipes in the navigation", () => {
     const recipesIndex = navItems.indexOf('label: "สูตรยา"');
-    const rankingIndex = navItems.indexOf('label: "Ranking"');
+    const rankingIndex = navItems.indexOf('label: "จัดอันดับ"');
     const howToIndex = navItems.indexOf('label: "วิธีการเล่น"');
 
     expect(recipesIndex).toBeGreaterThanOrEqual(0);
@@ -36,7 +36,7 @@ describe("Home and Ranking layout", () => {
     expect(navItems).toContain('to: "/ranking"');
   });
 
-  it("shows all difficulty tables on Ranking and offers a close action", () => {
+  it("shows all difficulty tables on จัดอันดับ and offers a close action", () => {
     expect(routes).toContain(
       '<Route path="/ranking" element={<RankingView />} />'
     );
