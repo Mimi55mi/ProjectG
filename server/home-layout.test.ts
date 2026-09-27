@@ -2,7 +2,10 @@ import { readFileSync } from "node:fs";
 import { resolve } from "node:path";
 import { describe, expect, it } from "vitest";
 
-const source = readFileSync(resolve(process.cwd(), "client/src/App.tsx"), "utf8");
+const source = readFileSync(
+  resolve(process.cwd(), "client/src/App.tsx"),
+  "utf8"
+);
 const homeView = extractFunction("HomeView");
 const rankingView = extractFunction("RankingView");
 const navItems = source.match(/const navItems = \[([\s\S]*?)\n\];/)?.[1] ?? "";
@@ -34,8 +37,11 @@ describe("Home and Ranking layout", () => {
   });
 
   it("shows all difficulty tables on Ranking and offers a close action", () => {
-    expect(routes).toContain('<Route path="/ranking" element={<RankingView />} />');
-    expect(rankingView).toContain("trpc.leaderboard.top.useQuery()");
+    expect(routes).toContain(
+      '<Route path="/ranking" element={<RankingView />} />'
+    );
+    expect(rankingView).toContain("loadLocalLeaderboard()");
+    expect(rankingView).toContain("boards={localBoards}");
     expect(rankingView).toContain("<LeaderboardSection");
     expect(rankingView).toContain('aria-label="ปิดตารางสถิติ"');
     expect(rankingView).toContain('navigate("/")');
