@@ -40,7 +40,7 @@ pnpm build
 
 ## Deploy บน Vercel
 
-ไฟล์ `vercel.json` ตั้งค่าให้แล้ว โดยใช้ `pnpm build:vercel`, เสิร์ฟ frontend จาก `public/` และส่ง `/api/*` เข้า Express Function ใน `server.ts` ส่วนเส้นทาง React Router จะ fallback ไป `index.html` โดยไม่กระทบ API
+ไฟล์ `vercel.json` ตั้งค่าให้แล้ว โดยใช้ `pnpm build:vercel`, กำหนด output directory เป็น `public/`, เสิร์ฟ frontend จาก `public/` และส่ง `/api/*` เข้า Express Function ใน `server.ts` ส่วนเส้นทาง React Router จะ fallback ไป `index.html` โดยไม่กระทบ API
 
 ตั้งค่า environment variables จาก `.env.example` ใน Vercel Project Settings โดยเฉพาะ `DATABASE_URL` หากต้องการให้ leaderboard บันทึกคะแนนได้ และค่า Manus OAuth/API หากเปิดใช้งานฟีเจอร์เหล่านั้น
 

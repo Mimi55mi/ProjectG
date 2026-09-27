@@ -39,11 +39,12 @@
 - ติดตั้งด้วย `pnpm install --frozen-lockfile`
 - build ด้วย `pnpm build:vercel`
 - สร้าง frontend ไปที่ `public/` ซึ่ง Vercel ใช้เสิร์ฟเป็น static assets
+- กำหนด `outputDirectory` เป็น `public` เพื่อไม่ให้ Vercel หา `dist/` ที่ไม่มีอยู่
 - ใช้ root `server.ts` เป็น Express Function สำหรับ `/api/trpc`, OAuth callback และ storage proxy
 - fallback เส้นทางของ React Router ไปที่ `index.html` โดยไม่ดัก `/api/*`
 - ปิด cache สำหรับ API เพื่อไม่ให้คะแนนเก่าค้าง
 
-ไม่ต้องตั้ง Root Directory เป็น `client/` และไม่ต้องกรอก Output Directory ทับค่าใน `vercel.json`
+ไม่ต้องตั้ง Root Directory เป็น `client/` และไม่ต้องเปลี่ยน Output Directory จาก `public`
 
 ## 3. Environment Variables บน Vercel
 
