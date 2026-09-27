@@ -758,7 +758,7 @@ const difficulty = {
 const navItems = [
   { label: "หน้าแรก", to: "/", icon: Home },
   { label: "สูตรยา", to: "/recipes", icon: BookOpen },
-  { label: "Ranking", to: "/ranking", icon: Trophy },
+  { label: "จัดอันดับ", to: "/ranking", icon: Trophy },
   { label: "วิธีการเล่น", to: "/how-to-play", icon: CircleHelp },
 ];
 const ingredientById = (id: string) => ingredients.find(item => item.id === id);
@@ -954,7 +954,7 @@ function RankingView() {
       <section className="ranking-page-header section-heading">
         <div>
           <div className="eyebrow">MOONBREW HALL OF FAME</div>
-          <h1>Ranking</h1>
+          <h1>จัดอันดับ</h1>
           <p>ตารางคะแนนสูงสุดแยกตามระดับความยาก</p>
         </div>
         <button
